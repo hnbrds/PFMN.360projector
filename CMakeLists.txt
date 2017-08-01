@@ -13,6 +13,7 @@ else()
 endif()
 
 add_executable(OgreFltk
+"SphericalPlayer.cpp"
 "math/math_macro.h"
 "math/mathclass.h"
 "math/matrix4.h"
@@ -31,7 +32,7 @@ add_executable(OgreFltk
 
 if(UNIX)
 	if(APPLE)
-	target_link_libraries(OgreFltk 
+	target_link_libraries(OgreFltk
 			/System/Library/Frameworks/CoreFoundation.framework
 			/System/Library/Frameworks/IOKit.framework
 			/System/Library/Frameworks/Cocoa.framework
@@ -42,14 +43,14 @@ if(UNIX)
 			/usr/local/lib/libfreeimage.dylib
 			)
 	else()
-	target_link_libraries(OgreFltk 
+	target_link_libraries(OgreFltk
 		GL
 		GLU
 		glfw
 		)
 	endif()
 else()
-target_link_libraries(OgreFltk 
+target_link_libraries(OgreFltk
 	OpenGL32.lib
 	GLu32.lib
 	"${OgreFltk_SOURCE_DIR}/glfw-3.1.2/lib-msvc110/GLFW.lib"

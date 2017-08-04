@@ -10,4 +10,20 @@
 #include <opencv2/videoio.hpp>
 #include <opencv2/highgui.hpp>
 #include <opencv2/opencv.hpp>
+
+class Player
+{
+private:
+    int cur_frame;
+    double frame_rate;
+    std::string video_dir;
+    cv::VideoCapture* cap;
+    
+public:
+    Player();
+    Player(std::string const&);
+    
+    cv::Mat getNextFrame(void);
+    int getFrameCount(void);
+};
 #endif

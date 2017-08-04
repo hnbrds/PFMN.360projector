@@ -1,18 +1,26 @@
 # -*- mode: cmake; -*-
 cmake_minimum_required(VERSION 2.8)
 project(OgreFltk)
+find_package(OpenCV REQUIRED)
+
 if(APPLE)
 	# sudo port install glfw freeglut
-	include_directories(“/usr/local/include”)
+	include_directories("/usr/local/include")
+  #set(OpenCV_LIBS opencv_core opencv_imgproc opencv_calib3d opencv_video opencv_features2d opencv_ml opencv_highgui opencv_objdetect opencv_contrib opencv_legacy opencv_gpu)
 endif()
 if(UNIX)
-	set(CMAKE_C_FLAGS_DEBUG “${CMAKE_C_FLAGS_DEBUG} -D_DEBUG -Wall”)
-	set(CMAKE_CXX_FLAGS_DEBUG “${CMAKE_CXX_FLAGS_DEBUG} -D_DEBUG -Wall”)
+	set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -D_DEBUG -Wall")
+	set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -D_DEBUG -Wall")
+  #set(OpenCV_LIBS opencv_core opencv_imgproc opencv_calib3d opencv_video opencv_features2d opencv_ml opencv_highgui opencv_objdetect opencv_contrib opencv_legacy opencv_gpu)
 else()
-	include_directories("${OgreFltk_SOURCE_DIR}/glfw-3.1.2/include")
+  include_directories("${OgreFltk_SOURCE_DIR}/glfw-3.1.2/include")
 endif()
 
 add_executable(OgreFltk
+"cv/VideoFrame.cpp"
+"cv/VideoFrame.h"
+"WaveFrontOBJ.cpp"
+"WaveFrontOBJ.h"
 "SphericalPlayer.cpp"
 "math/math_macro.h"
 "math/mathclass.h"
@@ -41,7 +49,8 @@ if(UNIX)
 			#/opt/local/lib/libglut.dylib
 			/System/Library/Frameworks/GLUT.framework
 			/usr/local/lib/libfreeimage.dylib
-			)
+      "${OpenCV_LIBS}"
+      )
 	else()
 	target_link_libraries(OgreFltk
 		GL
@@ -54,5 +63,6 @@ target_link_libraries(OgreFltk
 	OpenGL32.lib
 	GLu32.lib
 	"${OgreFltk_SOURCE_DIR}/glfw-3.1.2/lib-msvc110/GLFW.lib"
+	"${OpenCV_LIBS}"
 	)
 endif()

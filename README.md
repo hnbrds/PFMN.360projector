@@ -1,5 +1,4 @@
 # 360VR Projector
-
 Equirectangular video to sphere projector
 
 ## Environment
@@ -20,7 +19,4 @@ Equirectangular video to sphere projector
 ### VR Player
 `cmake .`
 <br> `make`
-<br> run ``./Ogrefltk``
-
-### Projection module
-none
+<br> run ``./Ogrefltk <Video path>``

@@ -16,8 +16,10 @@ class Player
 private:
     int cur_frame;
     double frame_rate;
-    std::string video_dir;
-    cv::VideoCapture* cap;
+    //std::string video_dir;
+    std::string image_dir;
+    //cv::VideoCapture* cap;
+    cv::Mat cap;
     
 public:
     Player();

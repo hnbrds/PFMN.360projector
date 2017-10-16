@@ -3,6 +3,9 @@
  * GLFW_VERSION_MAJOR == 3
  **********************************************************************************/
 
+typedef unsigned char BYTE;
+typedef wchar_t WCHAR;
+
 #include <iostream>
 #include <fstream>
 #include <stdlib.h>
@@ -16,6 +19,7 @@
 #include "math/matrix4.h"
 #include "math/vector3.h"
 #include "cv/VideoFrame.h"
+#include "ZoomInterpolation/BMPLoader.h"
 
 #ifndef M_PI
 #define M_PI 3.1415926535897932384626433832795
@@ -43,26 +47,32 @@ Player* player;
  * centerx, centery, centerz : point camera is looking at
  * upx, upy, upz : camera upward vector
  */
-double eyes[7][9] =
+double eyes[10][9] =
 {
     {0,0,0,0,0,1,0,1,0},
     {0,0,0,-1,0,0,0,1,0},
     {0,0,0,0,0,-1,0,1,0},
     {0,0,0,1,0,0,0,1,0},
     {0,0,0,0,1,0,0,0,1},
-    {0,0,0,0,-1,0,0,0,-1},
+    {0,0,0,1,-1,1,0,0,1},
+    {0,0,0,1,1,-1,0,0,1},
+    {0,0,0,1,-1,-1,0,0,1},
+    {0,0,0,1,1,1,0,0,1},
     {120,50,180,0,0,0,0,1,0}
 };
+float angle = 0.0f, ratio;
+float x, y, z;
+float lx, ly, lz;
+
 int eyeCount = sizeof(eyes) / sizeof(eyes[0]);
 int eyeIndex;
 vector<matrix4> wld2eye, eye2wld;
-
 
 // Sphere
 matrix4 sphere2wld;
 int sphereID;
 GLuint sphereText;
-float Radius = 70;
+float Radius = 700;
 
 typedef struct // struct for sphere
 {
@@ -73,7 +83,7 @@ typedef struct // struct for sphere
     double U;
     double V;
 }VERTICES;
-const int space = 5;
+const int space = 1;
 const int vertexCount = (90/space)*(360/space)*4;
 VERTICES VERTEX[vertexCount];
 
@@ -82,6 +92,8 @@ VERTICES VERTEX[vertexCount];
 int width, height;
 static int isDrag = 0;
 
+// Screen pixels
+unsigned char* pixels;
 
 /*********************************************************************************
  * OpenCV Mat to OpenGL texture
@@ -137,7 +149,7 @@ void drawFrame(float len)
  **********************************************************************************/
 void drawSphere(double R, GLuint texture)
 {
-    //glScalef (0.0125 * R, 0.0125 * R, 0.0125 * R);
+    glScalef (0.0125 * R, 0.0125 * R, 0.0125 * R);
     glRotatef (90, 1, 0, 0);
     glBindTexture (GL_TEXTURE_2D, texture);
     glBegin (GL_TRIANGLE_STRIP);
@@ -232,7 +244,22 @@ void display()
     glEnable(GL_TEXTURE_2D);
     glBindTexture(GL_TEXTURE_2D, sphereText);
     
-    drawSphere(10, sphereText);
+    drawSphere(8, sphereText);
+    
+    glReadPixels(0, 0, width, height, GL_RGB, GL_UNSIGNED_BYTE, pixels);
+    bitmap_image image(width, height);
+    image_drawer draw(image);
+    
+    for (unsigned int i = 0; i < image.width(); ++i)
+    {
+        for (unsigned int j = 0; j < image.height(); ++j)
+        {
+            image.set_pixel(i,j,*(++imageData),*(++imageData),*(++imageData));
+        }
+    }
+    
+    image.save_image("Trangle_image.bmp");
+    
     glFlush();
 }
 
@@ -249,10 +276,10 @@ void reshape( int w, int h)
     glLoadIdentity();                       // Reset The Projection Matrix
     
     // Define perspective projection frustum
-    double aspect = width/ double(height);
+    double aspect = width / double(height);
     
     // void gluPerpective(GLdouble fovy, GLdouble aspect, GLdouble near, GLdouble far);
-    gluPerspective(60, aspect, 1, 1024);
+    gluPerspective(30.0f, aspect,  1, 1024);
     glMatrixMode(GL_MODELVIEW);             // Select The Modelview Matrix
     glLoadIdentity();                       // Reset The Projection Matrix
 }
@@ -326,6 +353,23 @@ void onKeyPress( int key, int action)
         printf("Viewpoint change\n", eyeIndex);
         eyeIndex = (eyeIndex + 1) % eyeCount;
     }
+    
+    else if (key == 'w'){
+        
+    }
+    
+    else if (key == 's'){
+        
+    }
+    
+    else if (key == 'a'){
+        
+    }
+    
+    else if (key == 'd') {
+        
+    }
+    
 }
     
 /*********************************************************************************
@@ -383,19 +427,27 @@ void initialize()
 
 int main(int argc, char* argv[])
 {
-    if(argc != 2){
-        cout << "ERROR: Number of argument" << endl;
+    glfwWindowHint(GLFW_SAMPLES, 8);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
+    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+    
+    if(argc != 4){
+        cout << "ERROR: Number of argument, Should be 4" << endl;
         return -1;
     }
     video_dir = argv[1];
     player = new Player(video_dir);
     
-    width = 500;
-    height = 500;
+    width = 640;
+    height = 360;
     int BPP = 32;
-    glfwInit(); // Init OpenGL
+    sglfwInit(); // Init OpenGL
+    
+    pixels = (unsigned char *)malloc((int)(3 * width * height));
     namedWindow("Sample Video", 1);
-   
+    
 #if GLFW_VERSION_MAJOR==3
     GLFWwindow* window = glfwCreateWindow(width, height, "360 Player", NULL, NULL);
     g_window=window;

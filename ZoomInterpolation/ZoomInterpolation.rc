@@ -1,0 +1,237 @@
+// Microsoft Visual C++ generated resource script.
+//
+#include "resource.h"
+
+#define APSTUDIO_READONLY_SYMBOLS
+/////////////////////////////////////////////////////////////////////////////
+//
+// Generated from the TEXTINCLUDE 2 resource.
+//
+#include "afxres.h"
+
+/////////////////////////////////////////////////////////////////////////////
+#undef APSTUDIO_READONLY_SYMBOLS
+
+/////////////////////////////////////////////////////////////////////////////
+// English (U.S.) resources
+
+#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_ENU)
+#ifdef _WIN32
+LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
+#pragma code_page(1252)
+#endif //_WIN32
+
+#ifdef APSTUDIO_INVOKED
+/////////////////////////////////////////////////////////////////////////////
+//
+// TEXTINCLUDE
+//
+
+1 TEXTINCLUDE 
+BEGIN
+    "resource.h\0"
+END
+
+2 TEXTINCLUDE 
+BEGIN
+    "#include ""afxres.h""\r\n"
+    "\0"
+END
+
+3 TEXTINCLUDE 
+BEGIN
+    "#define _AFX_NO_SPLITTER_RESOURCES\r\n"
+    "#define _AFX_NO_OLE_RESOURCES\r\n"
+    "#define _AFX_NO_TRACKER_RESOURCES\r\n"
+    "#define _AFX_NO_PROPERTY_RESOURCES\r\n"
+    "\r\n"
+    "#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_ENU)\r\n"
+    "#ifdef _WIN32\r\n"
+    "LANGUAGE 9, 1\r\n"
+    "#pragma code_page(1252)\r\n"
+    "#endif //_WIN32\r\n"
+    "#include ""res\\ZoomInterpolation.rc2""  // non-Microsoft Visual C++ edited resources\r\n"
+    "#include ""afxres.rc""         // Standard components\r\n"
+    "#endif\r\n"
+    "\0"
+END
+
+#endif    // APSTUDIO_INVOKED
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Icon
+//
+
+// Icon with lowest ID value placed first to ensure application icon
+// remains consistent on all systems.
+IDR_MAINFRAME           ICON                    "res\\ZoomInterpolation.ico"
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Dialog
+//
+
+IDD_ABOUTBOX DIALOGEX 0, 0, 235, 74
+STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "About ZoomInterpolation"
+FONT 8, "MS Sans Serif", 0, 0, 0x0
+BEGIN
+    ICON            IDR_MAINFRAME,IDC_STATIC,11,17,21,20
+    LTEXT           "ZoomInterpolation Version 1.0",IDC_STATIC,40,10,119,8,SS_NOPREFIX
+    LTEXT           "Copyright (C) 2011",IDC_STATIC,40,25,119,8
+    DEFPUSHBUTTON   "OK",IDOK,178,7,50,14,WS_GROUP
+    LTEXT           "Send Feedback: santhosh4g@gmail.com",IDC_STATIC,42,40,131,8
+END
+
+IDD_ZOOMINTERPOLATION_DIALOG DIALOGEX 0, 0, 805, 391
+STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_VISIBLE | WS_CAPTION | WS_SYSMENU
+EXSTYLE WS_EX_APPWINDOW
+CAPTION "ZoomInterpolation"
+FONT 8, "MS Sans Serif", 0, 0, 0x1
+BEGIN
+    CONTROL         "OpenGL Nearest",IDC_RADIO_GL_NEAREST,"Button",BS_AUTORADIOBUTTON,693,19,69,10
+    CONTROL         "OpenGL Linear",IDC_RADIO_GL_LINEAR,"Button",BS_AUTORADIOBUTTON,693,38,64,10
+    CONTROL         "GLSL Bi-Linear",IDC_RADIO_GLSL_LINEAR,"Button",BS_AUTORADIOBUTTON,693,54,63,10
+    CONTROL         "GLSL Bi-Cubic Triangular",IDC_RADIO_GLSL_BICUBIC_TRIANGULAR,
+                    "Button",BS_AUTORADIOBUTTON,693,72,95,10
+    CONTROL         "GLSL BiCubic Bell Shaped",IDC_RADIO_GLSL_BICUBIC_BELL,
+                    "Button",BS_AUTORADIOBUTTON,693,88,100,10
+    CONTROL         "GLSL BiCubic BSpline",IDC_RADIO_GLSL_BICUBIC_BSPLINE,
+                    "Button",BS_AUTORADIOBUTTON,693,106,86,10
+    CONTROL         "GLSL CatMull rom Spline",IDC_RADIO_GLSL_BICUBIC_CATMULL,
+                    "Button",BS_AUTORADIOBUTTON,693,123,94,10
+    CONTROL         "All In One",IDC_RADIO_ALL_IN_ONE,"Button",BS_AUTORADIOBUTTON,693,143,47,10
+    PUSHBUTTON      "Load Image",IDC_BUTTON1,686,265,56,14
+    PUSHBUTTON      "Save Image",IDC_BUTTON_SAVE,686,281,56,14
+    PUSHBUTTON      "About",IDC_BUTTON2,686,297,56,14
+    PUSHBUTTON      "Zoom-",IDC_BUTTON3,685,318,56,14
+    PUSHBUTTON      "Zoom+",IDC_BUTTON4,685,335,56,14
+    LTEXT           "",IDC_STATIC_RENDER,7,8,677,368
+    GROUPBOX        "Interpolation Type",IDC_STATIC,687,7,111,155
+    LTEXT           "",IDC_STATIC_INTERP_CURVE,688,176,110,80
+    LTEXT           "Interpolation Curve",IDC_STATIC,690,165,60,8
+END
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Version
+//
+
+VS_VERSION_INFO VERSIONINFO
+ FILEVERSION 1,0,0,1
+ PRODUCTVERSION 1,0,0,1
+ FILEFLAGSMASK 0x3fL
+#ifdef _DEBUG
+ FILEFLAGS 0x1L
+#else
+ FILEFLAGS 0x0L
+#endif
+ FILEOS 0x4L
+ FILETYPE 0x1L
+ FILESUBTYPE 0x0L
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "040904B0"
+        BEGIN
+            VALUE "FileDescription", "ZoomInterpolation MFC Application"
+            VALUE "FileVersion", "1, 0, 0, 1"
+            VALUE "InternalName", "ZoomInterpolation"
+            VALUE "LegalCopyright", "Copyright (C) 2011"
+            VALUE "OriginalFilename", "ZoomInterpolation.EXE"
+            VALUE "ProductName", "ZoomInterpolation Application"
+            VALUE "ProductVersion", "1, 0, 0, 1"
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x409, 1200
+    END
+END
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// DESIGNINFO
+//
+
+#ifdef APSTUDIO_INVOKED
+GUIDELINES DESIGNINFO 
+BEGIN
+    IDD_ABOUTBOX, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 228
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 67
+    END
+
+    IDD_ZOOMINTERPOLATION_DIALOG, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 798
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 387
+    END
+END
+#endif    // APSTUDIO_INVOKED
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Bitmap
+//
+
+IDB_BITMAP_FLOWER       BITMAP                  "res\\Flower.bmp"
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// GLSL_SHADER
+//
+
+IDR_GLSL_SHADER_BILINEAR GLSL_SHADER             "pixel_shader_BiLinear.cg"
+IDR_GLSL_SHADER_BICUBIC GLSL_SHADER             "pixel_shader_BiCubic.cg"
+IDR_GLSL_SHADER_BELL    GLSL_SHADER             "pixel_shader_Bell.cg"
+IDR_GLSL_SHADER_BSPLINE GLSL_SHADER             "pixel_shader_BSpline.cg"
+IDR_GLSL_SHADER_CATMULL GLSL_SHADER             "pixel_shader_CatMull.cg"
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// String Table
+//
+
+STRINGTABLE 
+BEGIN
+    IDS_ABOUTBOX            "&About ZoomInterpolation..."
+END
+
+#endif    // English (U.S.) resources
+/////////////////////////////////////////////////////////////////////////////
+
+
+
+#ifndef APSTUDIO_INVOKED
+/////////////////////////////////////////////////////////////////////////////
+//
+// Generated from the TEXTINCLUDE 3 resource.
+//
+#define _AFX_NO_SPLITTER_RESOURCES
+#define _AFX_NO_OLE_RESOURCES
+#define _AFX_NO_TRACKER_RESOURCES
+#define _AFX_NO_PROPERTY_RESOURCES
+
+#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_ENU)
+#ifdef _WIN32
+LANGUAGE 9, 1
+#pragma code_page(1252)
+#endif //_WIN32
+#include "res\ZoomInterpolation.rc2"  // non-Microsoft Visual C++ edited resources
+#include "afxres.rc"         // Standard components
+#endif
+
+/////////////////////////////////////////////////////////////////////////////
+#endif    // not APSTUDIO_INVOKED
+

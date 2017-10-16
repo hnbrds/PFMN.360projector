@@ -3,6 +3,7 @@
 using namespace std;
 using namespace cv;
 
+/*
 Player::Player(string const& _video_dir)
 {
     video_dir = _video_dir;
@@ -20,7 +21,18 @@ cv::Mat Player::getNextFrame(void)
     cur_frame++;
     return frame;
 }
+*/
 
+Player::Player(string const& _image_dir)
+{
+    image_dir = _image_dir;
+    cap = imread(image_dir);
+}
+
+cv::Mat Player::getNextFrame(void)
+{
+    return cap;
+}
 
 int Player::getFrameCount(void)
 {

@@ -9,8 +9,14 @@ if(APPLE)
   #set(OpenCV_LIBS opencv_core opencv_imgproc opencv_calib3d opencv_video opencv_features2d opencv_ml opencv_highgui opencv_objdetect opencv_contrib opencv_legacy opencv_gpu)
 endif()
 if(UNIX)
-	set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -D_DEBUG -Wall")
-	set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -D_DEBUG -Wall")
+    set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -D_DEBUG -Wall")
+    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -D_DEBUG -Wall")
+    include_directories(${OpenCV_INCLUDE_DIRS})
+
+    set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/Modules/")
+    find_package(OSMesa REQUIRED)
+    include_directories(${OSMESA_INCLUDE_DIR})
+    set(OSMesaLIBS ${OSMesaLIBS} ${OSMESA_LIBRARY})
 else()
   include_directories("${OgreFltk_SOURCE_DIR}/glfw-3.1.2/include")
 endif()
@@ -36,7 +42,7 @@ add_executable(OgreFltk
 )
 
 if(UNIX)
-	if(APPLE)
+    if(APPLE)
 	target_link_libraries(OgreFltk
 			/System/Library/Frameworks/CoreFoundation.framework
 			/System/Library/Frameworks/IOKit.framework
@@ -46,20 +52,23 @@ if(UNIX)
 			#/usr/local/lib/libglut.dylib
 			/System/Library/Frameworks/GLUT.framework
 			/usr/local/lib/libfreeimage.dylib
-      "${OpenCV_LIBS}"
+            "${OpenCV_LIBS}"
       )
-	else()
-	target_link_libraries(OgreFltk
-		GL
-		GLU
-		glfw
-		)
-	endif()
+    else()
+    target_link_libraries(OgreFltk
+        GL
+        GLU
+        glfw
+        ${OpenCV_LIBS}
+        ${OSMESA_LIBRARY}
+    )
+    endif()
 else()
 target_link_libraries(OgreFltk
 	OpenGL32.lib
 	GLu32.lib
 	"${OgreFltk_SOURCE_DIR}/glfw-3.1.2/lib-msvc110/GLFW.lib"
 	"${OpenCV_LIBS}"
+    #"${OSMesaLIBS}"
 	)
 endif()

@@ -11,6 +11,7 @@ void Player::parsefile(std::string& filepath){
     this->filename = filepath.substr(start, end-start);
     //cout << this->filename << endl;
     this->fileroot = filepath.substr(27, start-27);
+    //this->fileroot = "asdf";
     //cout << this->fileroot << endl;
     
 }
@@ -90,7 +91,7 @@ int Player::getFrameCount(void)
 
 void Player::outputFrame(const char *filename, float *buffer, int width, int height)
 {
-    //cout << "Writing jpg file" << endl;
+    cout << filename << endl;
     Mat tmp = cv::Mat(height, width, CV_32FC4, buffer);
     cvtColor(tmp, tmp, CV_BGR2RGB);
     flip(tmp, tmp, 0);

@@ -75,7 +75,7 @@ int eyeCount = sizeof(eyes) / sizeof(eyes[0]);
 int eyeIndex;
 
 double eyes_lon[9] = {0, 40, 80, 120, 160, 200, 240, 280, 320};
-double eyes_lat[9] = {0, 15, -15, 35, -35, 55, -55, 75, -75};
+double eyes_lat[9] = {-75, -55, -35, -15, 0, 15, 35, 55, 75};
 
 int eyeLonCount = sizeof(eyes_lon) / sizeof(eyes_lon[0]);
 int eyeLatCount = sizeof(eyes_lat) / sizeof(eyes_lat[0]);
@@ -90,7 +90,8 @@ float x, y, z;
 float lx, ly, lz;
 
 
-vector<matrix4> wld2eye, eye2wld;
+//vector<matrix4> wld2eye, eye2wld;
+matrix4 wld2eye, eye2wld;
 
 // Sphere
 matrix4 sphere2wld;
@@ -134,8 +135,8 @@ vector3 getDirVector(double lon, double lat)
     double R = 100.;
     double x, y, z;
     x = R * cos(lat) * cos(lon);
-    y = R * cos(lat) * sin(lon);
-    z = R * sin(lat);
+    z = R * cos(lat) * sin(lon);
+    y = R * sin(lat);
     printf("Dir vector: %f %f %f\n", x, y, z);
     return vector3(x, y, z);
 }
@@ -236,7 +237,6 @@ write_targa(const char *filename, const GLfloat *buffer, int width, int height)
     if (f) {
         int i, x, y;
         const GLfloat *ptr = buffer;
-        printf ("writing tga file \n");
         fputc (0x00, f);	/* ID Length, 0 => No ID	*/
         fputc (0x00, f);	/* Color Map Type, 0 => No color map included	*/
         fputc (0x02, f);	/* Image Type, 2 => Uncompressed, True-color Image */
@@ -358,9 +358,17 @@ void drawSphere(double R, GLuint texture)
     glScalef (0.0125 * R, 0.0125 * R, 0.0125 * R);
     
     glRotatef (90, 1, 0, 0);
-    glRotatef ((float)xAxisRotDeg, 1.0, 0.0, 0.0);
-    glRotatef ((float)yAxisRotDeg, 0.0, 1.0, 0.0);
-    glRotatef ((float)zAxisRotDeg, 0.0, 0.0, 1.0);
+    glRotatef (90, 0, 0, 1);
+    
+    //eyeLonIndex = eyeIndex / eyeLatCount;
+    //eyeLatIndex = eyeIndex % eyeLatCount;
+    
+    // Rotate by x-axis : Latitude
+    glRotatef ((int)eyes_lat[eyeLatIndex] + (float)xAxisRotDeg, -1.0, 0.0, 0.0);
+    glRotatef ((float)yAxisRotDeg, 0.0, -1.0, 0.0);
+    // Rotate by z-axis : Longitude
+    glRotatef ((int)eyes_lon[eyeLonIndex] + (float)zAxisRotDeg, 0.0, 0.0, -1.0);
+    
     //glRotatef (30., 1.0, 0.0, 0.0);
     //glRotatef (329., 0.0, 1.0, 0.0);
     //glRotatef (75., 0.0, 0.0, 1.0);
@@ -451,7 +459,7 @@ void display()
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     // set view transformation
-    glLoadMatrixd(wld2eye[eyeIndex].GLmatrix());
+    glLoadMatrixd(wld2eye.GLmatrix());
 
     ///glMatrixMode(GL_MODELVIEW);
     ///glLoadIdentity();
@@ -545,9 +553,9 @@ void nextProj(void) {
     else
         eyeIndex = (eyeIndex + 1) % (eyeLonCount * eyeLatCount);
     
-    //printf("Viewpoint change %d\n", eyeIndex);
     eyeLonIndex = eyeIndex / eyeLatCount;
     eyeLatIndex = eyeIndex % eyeLatCount;
+    
     printf("Lon Lat : %d %d\n", (int)eyes_lon[eyeLonIndex], (int)eyes_lat[eyeLatIndex]);
 }
 
@@ -640,9 +648,10 @@ void initialize()
     }
     
     {
+        /*
         for(int i = 0; i < eyeLonCount; i++){
             for(int j = 0; j < eyeLatCount; j++){
-                int idx = i*9 + j;
+                int idx = i * eyeLonCount + j;
                 
                 double* eye = eyes[idx];
                 wld2eye.push_back(matrix4());
@@ -654,10 +663,8 @@ void initialize()
                  * eyex, eyey, eyez : camera position
                  * centerx, centery, centerz : point camera is looking at
                  * upx, upy, upz : camera upward vector
-                 */
-                //gluLookAt(200, -200, 200,0,0,0,0,1,0);
-                //gluLookAt(0, 0, 0, 1, 0, 0, 0, 1, 0);
-                gluLookAt(0, 0, 0, dir_x, dir_y, dir_z, up_x, up_y, up_z);
+                 
+                //gluLookAt(0., 0., 0., dir_x, dir_y, dir_z, up_x, up_y, up_z);
                 wld2eye[idx].getCurrentOpenGLmatrix(GL_MODELVIEW_MATRIX);
                 glPopMatrix();
                 matrix4 invmat;
@@ -665,7 +672,14 @@ void initialize()
                 invmat.inverse(wld2eye[idx]);
                 eye2wld.push_back(invmat);
             }
-        }
+        }*/
+        
+        gluLookAt(0., 0., 0., 1., 0., 0., 0., 1., 0.);
+        wld2eye.getCurrentOpenGLmatrix(GL_MODELVIEW_MATRIX);
+        glPopMatrix();
+        matrix4 invmat;
+        invmat.inverse(wld2eye);
+        eye2wld = invmat;
     }
     eyeIndex = 0;
 }
@@ -720,9 +734,9 @@ int main(int argc, char* argv[])
         glfwSwapBuffers(window);
         glfwPollEvents();
         if(start == true){
-            nextProj();
             //save_tga();
             save_jpg();
+            nextProj();
         }
     }
 #else

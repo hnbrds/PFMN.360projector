@@ -1,13 +1,32 @@
+/*********************************************************************************
+ * Spherical Player for equirectangular video
+ * GLFW_VERSION_MAJOR == 3
+ **********************************************************************************/
+
+typedef unsigned char BYTE;
+typedef wchar_t WCHAR;
+
 #include <iostream>
 #include <string>
 #include <fstream>
 #include <stdlib.h>
+#include <math.h>
+#include <string>
 
+#ifdef __APPLE__
+#include <OpenGL/gl.h>
+#include <OpenGL/glu.h>
+#elif __LINUX
 #include <GL/gl.h>
 #include <GL/glu.h>
-#include <GL/osmesa.h>
+#endif
+#include <GL/gl.h>
+#include <GL/glu.h>
+#include <GLFW/glfw3.h>
 
 #include <assert.h>
+//#include <direct.h>
+#include <sys/stat.h>
 
 #include "math/matrix4.h"
 #include "math/vector3.h"
@@ -17,23 +36,28 @@
 #define M_PI 3.1415926535897932384626433832795
 #endif
 
+#define SAVE_TARGA
+
+#if GLFW_VERSION_MAJOR==3
+GLFWwindow* g_window = NULL;
+#endif
+#ifndef GLFW_FALSE
+#define GLFW_FALSE 0
+#endif
+
 #define XAXIS vector3(1,0,0)
 #define YAXIS vector3(0,1,0)
 #define ZAXIS vector3(0,0,1)
 
+
 using namespace std;
 using namespace cv;
 
-string image_dir;
+string video_dir;
 Player* player;
 
+
 // Eye
-/*
- * gluLookAt
- * eyex, eyey, eyez : camera position
- * centerx, centery, centerz : point camera is looking at
- * upx, upy, upz : camera upward vector
- */
 double eyes[10][9] =
 {
     {0,0,0,0,0,1,0,1,0},
@@ -47,12 +71,25 @@ double eyes[10][9] =
     {0,0,0,1,1,1,0,0,1},
     {120,50,180,0,0,0,0,1,0}
 };
+int eyeCount = sizeof(eyes) / sizeof(eyes[0]);
+int eyeIndex;
+
+double eyes_lon[9] = {0, 40, 80, 120, 160, 200, 240, 280, 320};
+double eyes_lat[9] = {0, 15, -15, 35, -35, 55, -55, 75, -75};
+
+int eyeLonCount = sizeof(eyes_lon) / sizeof(eyes_lon[0]);
+int eyeLatCount = sizeof(eyes_lat) / sizeof(eyes_lat[0]);
+int eyeLonIndex, eyeLatIndex;
+
+// Camera vectors
+double up_x, up_y, up_z;
+double dir_x, dir_y, dir_z;
+
 float angle = 0.0f, ratio;
 float x, y, z;
 float lx, ly, lz;
 
-int eyeCount = sizeof(eyes) / sizeof(eyes[0]);
-int eyeIndex;
+
 vector<matrix4> wld2eye, eye2wld;
 
 // Sphere
@@ -74,10 +111,195 @@ const int space = 1;
 const int vertexCount = (90/space)*(360/space)*4;
 VERTICES VERTEX[vertexCount];
 
+int zAxisRotDeg, xAxisRotDeg, yAxisRotDeg;
+
 
 // Width and Height for video player window
 int width, height;
 static int isDrag = 0;
+
+string image_dir;
+// Screen pixels
+Mat frame;
+GLfloat* pixels;
+
+bool start = false;
+
+
+/*
+ Setting Camera vector for gluLookAt
+ */
+vector3 getDirVector(double lon, double lat)
+{
+    double R = 100.;
+    double x, y, z;
+    x = R * cos(lat) * cos(lon);
+    y = R * cos(lat) * sin(lon);
+    z = R * sin(lat);
+    printf("Dir vector: %f %f %f\n", x, y, z);
+    return vector3(x, y, z);
+}
+
+
+vector3 getUpVector(vector3 dirvec)
+{
+    /*
+     vector3 tmpvec, upvec;
+     tmpvec.cross(dirvec, XAXIS);
+     upvec.cross(tmpvec, dirvec);
+     return upvec;
+     */
+    if(dirvec.x == 0. && dirvec.y == 0.){
+        //if(dirvec.z == 1. || dirvec.z == -1.)
+        return ZAXIS;
+    }
+    else{
+        return YAXIS;
+    }
+}
+
+
+void setCamera(double lon, double lat){
+    vector3 dirvec = getDirVector(lon, lat);
+    vector3 upvec = getUpVector(dirvec);
+    dir_x = dirvec.x;
+    dir_y = dirvec.y;
+    dir_z = dirvec.z;
+    up_x = upvec.x;
+    up_y = upvec.y;
+    up_z = upvec.z;
+}
+
+typedef struct stat Stat;
+/* Make all the directories leading up to PATH, then create PATH.  Note that
+ this changes the process's umask; make sure that all paths leading to a
+ return reset it to ORIGINAL_UMASK */
+
+static int do_mkdir(const char *path, mode_t mode)
+{
+    Stat            st;
+    int             status = 0;
+    
+    if (stat(path, &st) != 0)
+    {
+        /* Directory does not exist. EEXIST for race condition */
+        if (mkdir(path, mode) != 0 && errno != EEXIST)
+            status = -1;
+    }
+    else if (!S_ISDIR(st.st_mode))
+    {
+        errno = ENOTDIR;
+        status = -1;
+    }
+    
+    return(status);
+}
+
+/**
+ ** mkpath - ensure all directories in path exist
+ ** Algorithm takes the pessimistic view and works top-down to ensure
+ ** each directory in path exists, rather than optimistically creating
+ ** the last element and working backwards.
+ */
+int mkpath(const char *path, mode_t mode)
+{
+    char           *pp;
+    char           *sp;
+    int             status;
+    char           *copypath = strdup(path);
+    
+    status = 0;
+    pp = copypath;
+    while (status == 0 && (sp = strchr(pp, '/')) != 0)
+    {
+        if (sp != pp)
+        {
+            /* Neither root nor double slash in path */
+            *sp = '\0';
+            status = do_mkdir(copypath, mode);
+            *sp = '/';
+        }
+        pp = sp + 1;
+    }
+    if (status == 0)
+        status = do_mkdir(path, mode);
+    free(copypath);
+    return (status);
+}
+
+
+
+static void
+write_targa(const char *filename, const GLfloat *buffer, int width, int height)
+{
+    FILE *f = fopen( filename, "w" );
+    if (f) {
+        int i, x, y;
+        const GLfloat *ptr = buffer;
+        printf ("writing tga file \n");
+        fputc (0x00, f);	/* ID Length, 0 => No ID	*/
+        fputc (0x00, f);	/* Color Map Type, 0 => No color map included	*/
+        fputc (0x02, f);	/* Image Type, 2 => Uncompressed, True-color Image */
+        fputc (0x00, f);	/* Next five bytes are about the color map entries */
+        fputc (0x00, f);	/* 2 bytes Index, 2 bytes length, 1 byte size */
+        fputc (0x00, f);
+        fputc (0x00, f);
+        fputc (0x00, f);
+        fputc (0x00, f);	/* X-origin of Image	*/
+        fputc (0x00, f);
+        fputc (0x00, f);	/* Y-origin of Image	*/
+        fputc (0x00, f);
+        fputc (width & 0xff, f);      /* Image Width	*/
+        fputc ((width>>8) & 0xff, f);
+        fputc (height & 0xff, f);     /* Image Height	*/
+        fputc ((height>>8) & 0xff, f);
+        fputc (0x18, f);		/* Pixel Depth, 0x18 => 24 Bits	*/
+        fputc (0x20, f);		/* Image Descriptor	*/
+        fclose(f);
+        f = fopen( filename, "ab" );  /* reopen in binary append mode */
+        for (y=height-1; y>=0; y--) {
+            for (x=0; x<width; x++) {
+                int r, g, b;
+                i = (y * width + x) * 4;
+                r = (int) (ptr[i+0] * 255.0);
+                g = (int) (ptr[i+1] * 255.0);
+                b = (int) (ptr[i+2] * 255.0);
+                //printf("R G B : %d %d %d\n", r, g, b);
+                if (r > 255) r = 255;
+                if (g > 255) g = 255;
+                if (b > 255) b = 255;
+                fputc(b, f); /* write blue */
+                fputc(g, f); /* write green */
+                fputc(r, f); /* write red */
+            }
+        }
+        fclose(f);
+    }
+    glFlush();
+}
+
+
+void save_tga(){
+    glReadPixels(0, 0, width, height, GL_RGBA, GL_FLOAT, pixels);
+    string name = player->filename + "_" + to_string((int)eyes_lon[eyeLonIndex]) + "_" + to_string((int)eyes_lat[eyeLatIndex]) + ".tga";
+    
+    if(mkdir((player -> fileroot + "Projection").c_str(), S_IRUSR | S_IWUSR | S_IXUSR) == 0)
+        cout << "Create dir : " + player -> fileroot + "Projection";
+    
+    //printf("mkdir result : %d\n", result);
+    
+    write_targa((player -> fileroot + "Projection/" + name).c_str(), pixels, width, height);
+}
+
+void save_jpg(){
+    glReadPixels(0, 0, width, height, GL_RGBA, GL_FLOAT, pixels);
+    string name = player->filename + "_" + to_string((int)eyes_lon[eyeLonIndex]) + "_" + to_string((int)eyes_lat[eyeLatIndex]) + ".jpg";
+    
+    cout <<"/Volumes/JYS/Projection/" + player -> fileroot << endl;
+    mkpath(("/Volumes/JYS/Projection/" + player -> fileroot).c_str(), 0755);
+    
+    player -> outputFrame(("/Volumes/JYS/Projection/" + player -> fileroot + name).c_str(), pixels, width, height);
+}
 
 /*********************************************************************************
  * OpenCV Mat to OpenGL texture
@@ -104,6 +326,7 @@ GLuint MatToTexture(Mat _image)
 
     return textureID;
 }
+
 
 /*********************************************************************************
  * Draw x, y, z axis of current frame on screen.
@@ -133,7 +356,15 @@ void drawFrame(float len)
 void drawSphere(double R, GLuint texture)
 {
     glScalef (0.0125 * R, 0.0125 * R, 0.0125 * R);
+    
     glRotatef (90, 1, 0, 0);
+    glRotatef ((float)xAxisRotDeg, 1.0, 0.0, 0.0);
+    glRotatef ((float)yAxisRotDeg, 0.0, 1.0, 0.0);
+    glRotatef ((float)zAxisRotDeg, 0.0, 0.0, 1.0);
+    //glRotatef (30., 1.0, 0.0, 0.0);
+    //glRotatef (329., 0.0, 1.0, 0.0);
+    //glRotatef (75., 0.0, 0.0, 1.0);
+    
     glBindTexture (GL_TEXTURE_2D, texture);
     glBegin (GL_TRIANGLE_STRIP);
 
@@ -147,8 +378,8 @@ void drawSphere(double R, GLuint texture)
         glVertex3f (VERTEX[i].X, VERTEX[i].Y, VERTEX[i].Z);
     }
     glEnd();
-}
 
+}
 
 void createSphere(double R, double H, double K, double Z)
 {
@@ -170,6 +401,7 @@ void createSphere(double R, double H, double K, double Z)
             VERTEX[n].U = (i) / 360;
             // Then start working with the next vertex
             n++;
+
 
             // Then we do the same calculations as before, only adding the space variable
             // to the j values.
@@ -201,17 +433,18 @@ void createSphere(double R, double H, double K, double Z)
     }
 }
 
+
 /*********************************************************************************
  * Call this part whenever display events are needed.
  * Display events are called in case of re-rendering by OS. ex) screen movement, screen maximization, etc.
  **********************************************************************************/
 void display()
 {
-    Mat frame = player-> getNextFrame();
+    frame = player -> getCurrentFrame();
+    imshow("Original Image", frame);
 
     // Call OpenCV to get next frame
     sphereText = MatToTexture(frame);
-    //imshow("Sample Video", frame);
 
     // call display() for every frame of the video
     glClearColor(0., 0.25f, 1.0f, 1);
@@ -220,14 +453,15 @@ void display()
     // set view transformation
     glLoadMatrixd(wld2eye[eyeIndex].GLmatrix());
 
-    //glMatrixMode(GL_MODELVIEW);
-    //glLoadIdentity();
+    ///glMatrixMode(GL_MODELVIEW);
+    ///glLoadIdentity();
     glEnable(GL_TEXTURE_2D);
     glBindTexture(GL_TEXTURE_2D, sphereText);
-
+    
     drawSphere(8, sphereText);
     glFlush();
 }
+
 
 /*********************************************************************************
  * Call this part whenever size of the window is changed.
@@ -244,11 +478,131 @@ void reshape( int w, int h)
     double aspect = width / double(height);
 
     // void gluPerpective(GLdouble fovy, GLdouble aspect, GLdouble near, GLdouble far);
-    gluPerspective(30.0f, aspect,  1, 1024);
+    gluPerspective(60.0f, aspect,  1, 1024);
     glMatrixMode(GL_MODELVIEW);             // Select The Modelview Matrix
     glLoadIdentity();                       // Reset The Projection Matrix
 }
 
+
+/*********************************************************************************
+ * Call this part whenever mouse button is clicked.
+ **********************************************************************************/
+#if GLFW_VERSION_MAJOR==3
+void onMouseButton(GLFWwindow* window, int button, int state, int __mods)
+#else
+void onMouseButton(int button, int state)
+#endif
+{
+    const int GLFW_DOWN = 1;
+    const int GLFW_UP = 0;
+    int x, y;
+#if GLFW_VERSION_MAJOR == 3
+    double xpos, ypos;
+    glfwGetCursorPos(window, &xpos, &ypos);
+    x = xpos;
+    y = ypos;
+#else
+    glfwGetCursorPos(&x, &y);
+#endif
+    if (button == GLFW_MOUSE_BUTTON_LEFT)
+    {
+        if(state == GLFW_DOWN)
+        {
+            isDrag = 1;
+        }
+        else if (state == GLFW_UP)
+        {
+            isDrag = 0;
+        }
+    }
+}
+
+/*********************************************************************************
+ * Call this part whenever user drags mouse
+ * Input x, y : coordinate of mouse
+ **********************************************************************************/
+#if GLFW_VERSION_MAJOR == 3
+void onMouseDrag(GLFWwindow* window, double fx, double fy)
+{
+    int x = fx;
+    int y = fy;
+#else
+void onMouseDrag( int x, int y)
+{
+#endif
+    if (isDrag)
+    {
+        printf("Mouse Dragging\n");
+    }
+}
+
+
+void nextProj(void) {
+    if(eyeIndex == eyeLonCount * eyeLatCount - 1){
+        frame = player -> getNextFrame();
+        eyeIndex = 0;
+    }
+    else
+        eyeIndex = (eyeIndex + 1) % (eyeLonCount * eyeLatCount);
+    
+    //printf("Viewpoint change %d\n", eyeIndex);
+    eyeLonIndex = eyeIndex / eyeLatCount;
+    eyeLatIndex = eyeIndex % eyeLatCount;
+    printf("Lon Lat : %d %d\n", (int)eyes_lon[eyeLonIndex], (int)eyes_lat[eyeLatIndex]);
+}
+
+/*********************************************************************************
+* Call this part whenever user types keyboard.
+**********************************************************************************/
+#if GLFW_VERSION_MAJOR==3
+void onKeyPress(GLFWwindow *__win, int key, int __scancode, int action, int __mods)
+#else
+void onKeyPress( int key, int action)
+#endif
+{
+    if(action == GLFW_RELEASE)
+        return ;
+    if ((key == ' ') || (key == 'r'))
+    {
+        cout << "Start projection" << endl;
+        start = true;
+    }
+    else if (key == ']') {
+        frame = player -> getNextFrame();
+    }
+    else if (key == GLFW_KEY_N) {
+        nextProj();
+        glFlush();
+    }
+    else if (key == GLFW_KEY_S) {
+        save_tga();
+    }
+    else if (key == GLFW_KEY_RIGHT) {
+        zAxisRotDeg = (zAxisRotDeg + 1) % 360;
+        printf("Rotation degree X, Y, Z : %d %d %d\n", xAxisRotDeg, yAxisRotDeg, zAxisRotDeg);
+    }
+    else if (key == GLFW_KEY_LEFT) {
+        zAxisRotDeg = (zAxisRotDeg + 359) % 360;
+        printf("Rotation degree X, Y, Z : %d %d %d\n", xAxisRotDeg, yAxisRotDeg, zAxisRotDeg);
+    }
+    else if (key == GLFW_KEY_UP) {
+        xAxisRotDeg = (xAxisRotDeg + 1) % 360;
+        printf("Rotation degree X, Y, Z : %d %d %d\n", xAxisRotDeg, yAxisRotDeg, zAxisRotDeg);
+    }
+    else if (key == GLFW_KEY_DOWN) {
+        xAxisRotDeg = (xAxisRotDeg + 359) % 360;
+        printf("Rotation degree X, Y, Z : %d %d %d\n", xAxisRotDeg, yAxisRotDeg, zAxisRotDeg);
+    }
+    else if (key == GLFW_KEY_Z){
+        yAxisRotDeg = (yAxisRotDeg + 1) % 360;
+        printf("Rotation degree X, Y, Z : %d %d %d\n", xAxisRotDeg, yAxisRotDeg, zAxisRotDeg);
+    }
+    else if (key == GLFW_KEY_X){
+        yAxisRotDeg = (yAxisRotDeg + 359) % 360;
+        printf("Rotation degree X, Y, Z : %d %d %d\n", xAxisRotDeg, yAxisRotDeg, zAxisRotDeg);
+    }
+
+}
 
 /*********************************************************************************
 * Load texure video from file
@@ -284,133 +638,115 @@ void initialize()
     { // Initialize sphere
         createSphere(Radius,0,0,0);
     }
-
-    { // Initialize eye transform
-        for(int i = 0; i< eyeCount; i++)
-        {
-            double* eye = eyes[i];
-            wld2eye.push_back(matrix4());
-            glPushMatrix();
-            glLoadIdentity();
-            gluLookAt(eye[0], eye[1], eye[2], eye[3], eye[4], eye[5], eye[6], eye[7], eye[8]);
-            wld2eye[i].getCurrentOpenGLmatrix(GL_MODELVIEW_MATRIX);
-            glPopMatrix();
-            matrix4 invmat;
-            invmat.inverse(wld2eye[i]);
-            eye2wld.push_back(invmat);
+    
+    {
+        for(int i = 0; i < eyeLonCount; i++){
+            for(int j = 0; j < eyeLatCount; j++){
+                int idx = i*9 + j;
+                
+                double* eye = eyes[idx];
+                wld2eye.push_back(matrix4());
+                glPushMatrix();
+                glLoadIdentity();
+                setCamera(eyes_lon[i], eyes_lat[j]);
+                /*
+                 * gluLookAt
+                 * eyex, eyey, eyez : camera position
+                 * centerx, centery, centerz : point camera is looking at
+                 * upx, upy, upz : camera upward vector
+                 */
+                //gluLookAt(200, -200, 200,0,0,0,0,1,0);
+                //gluLookAt(0, 0, 0, 1, 0, 0, 0, 1, 0);
+                gluLookAt(0, 0, 0, dir_x, dir_y, dir_z, up_x, up_y, up_z);
+                wld2eye[idx].getCurrentOpenGLmatrix(GL_MODELVIEW_MATRIX);
+                glPopMatrix();
+                matrix4 invmat;
+                
+                invmat.inverse(wld2eye[idx]);
+                eye2wld.push_back(invmat);
+            }
         }
     }
     eyeIndex = 0;
 }
 
-static void
-write_targa(const char *filename, const GLfloat *buffer, int width, int height)
-{
-   FILE *f = fopen( filename, "w" );
-   if (f) {
-      int i, x, y;
-      const GLfloat *ptr = buffer;
-      printf ("osdemo, writing tga file \n");
-      fputc (0x00, f);	/* ID Length, 0 => No ID	*/
-      fputc (0x00, f);	/* Color Map Type, 0 => No color map included	*/
-      fputc (0x02, f);	/* Image Type, 2 => Uncompressed, True-color Image */
-      fputc (0x00, f);	/* Next five bytes are about the color map entries */
-      fputc (0x00, f);	/* 2 bytes Index, 2 bytes length, 1 byte size */
-      fputc (0x00, f);
-      fputc (0x00, f);
-      fputc (0x00, f);
-      fputc (0x00, f);	/* X-origin of Image	*/
-      fputc (0x00, f);
-      fputc (0x00, f);	/* Y-origin of Image	*/
-      fputc (0x00, f);
-      fputc (width & 0xff, f);      /* Image Width	*/
-      fputc ((width>>8) & 0xff, f);
-      fputc (height & 0xff, f);     /* Image Height	*/
-      fputc ((height>>8) & 0xff, f);
-      fputc (0x18, f);		/* Pixel Depth, 0x18 => 24 Bits	*/
-      fputc (0x20, f);		/* Image Descriptor	*/
-      fclose(f);
-      f = fopen( filename, "ab" );  /* reopen in binary append mode */
-      for (y=height-1; y>=0; y--) {
-         for (x=0; x<width; x++) {
-            int r, g, b;
-            i = (y*width + x) * 4;
-            r = (int) (ptr[i+0] * 255.0);
-            g = (int) (ptr[i+1] * 255.0);
-            b = (int) (ptr[i+2] * 255.0);
-            if (r > 255) r = 255;
-            if (g > 255) g = 255;
-            if (b > 255) b = 255;
-            fputc(b, f); /* write blue */
-            fputc(g, f); /* write green */
-            fputc(r, f); /* write red */
-         }
-      }
-   }
-}
-
-vector3 getDirVector(double lon, double lat)
-{
-    double R = 100.;
-    double x, y, z;
-    x = R * cos(lat) * cos(lon);
-    y = R * cos(lat) * sin(lon);
-    z = R * sin(lat);
-    return vector3(x, y, z);
-}
-
-vector3 getUpVector(vector3 dirvec)
-{
-    vector3 tmpvec, upvec;
-    tmpvec.cross(dirvec, XAXIS);
-    upvec.cross(tmpvec, dirvec);
-    return upvec;
-}
-
 int main(int argc, char* argv[])
 {
-    if(argc != 5){
-        cout << "ERROR: Number of arguments should be 5" << endl;
-    }
+    
+    glfwWindowHint(GLFW_SAMPLES, 8);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
+    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
-    GLfloat *buffer;
-    image_dir = argv[1];
-    player = new Player(image_dir);
 
-    width = 640;
-    height = 360;
+    /*if(argc != 2){
+        cout << "ERROR: Number of argument, Should be 2" << endl;
+        return -1;
+    }*/
+    //image_dir = argv[1];
+    //player = new Player(image_dir);
+    
+    
+    player = new Player();
+    
+    width = 360;
+    height = 200;
     int BPP = 32;
+    
+    glfwInit(); // Init OpenGL
 
-   /* Create an RGBA-mode context */
-#if OSMESA_MAJOR_VERSION * 100 + OSMESA_MINOR_VERSION >= 305
-   /* specify Z, stencil, accum sizes */
-   OSMesaContext ctx = OSMesaCreateContextExt( GL_RGBA, 16, 0, 0, NULL );
+    pixels = (GLfloat *)malloc(sizeof(GLfloat) * (4 * width * height));
+
+    // Show original image
+    namedWindow("Original Image", CV_WINDOW_AUTOSIZE);
+
+#if GLFW_VERSION_MAJOR==3
+    GLFWwindow* window = glfwCreateWindow(width, height, "", NULL, NULL);
+    g_window = window;
+    if(!window) {glfwTerminate(); return 1;}
+    glfwMakeContextCurrent(window);
+
+    initialize(); // Initialize sphere, eye matrices
+
+    glfwSetKeyCallback(window, onKeyPress);
+    glfwSetMouseButtonCallback(window, onMouseButton);
+    glfwSetCursorPosCallback(window, onMouseDrag);
+
+    
+    while (!glfwWindowShouldClose(window))
+    {
+        display();
+        glfwSwapBuffers(window);
+        glfwPollEvents();
+        if(start == true){
+            nextProj();
+            //save_tga();
+            save_jpg();
+        }
+    }
 #else
-   OSMesaContext ctx = OSMesaCreateContext( GL_RGBA, NULL );
+    // Create i window (8-bit depth-buffer, no alpha and stencil buffers, windowed)
+    glfwOpenWindow(width, height, BPP/4, BPP/4, BPP/4, 1, 8, 1, GLFW_WINDOW) ;
+    glfwSetWindowTitle("360 Player");				// Make window whose name is "Simple Scene".
+    int rv,gv,bv;
+    glGetIntegerv(GL_RED_BITS,&rv);					// Get the depth of red bits from GL.
+    glGetIntegerv(GL_GREEN_BITS,&gv);				// Get the depth of green bits from GL.
+    glGetIntegerv(GL_BLUE_BITS,&bv);				// Get the depth of blue bits from GL.
+    printf( "Pixel depth = %d : %d : %d\n", rv, gv, bv );
+    initialize();									// Initialize the other thing.
+
+    glfwSetKeyCallback(onKeyPress);					// Register onKeyPress function to call that when user presses the keyboard.
+    glfwSetMouseButtonCallback(onMouseButton);		// Register onMouseButton function to call that when user moves mouse.
+    glfwSetMousePosCallback(onMouseDrag);			// Register onMouseDrag function to call that when user drags mouse.
+
+    while(glfwGetWindowParam(GLFW_OPENED) )
+    {
+        display();
+        glfwSwapBuffers();
+    }
 #endif
-   if (!ctx) {
-      printf("OSMesaCreateContext failed!\n");
-      return 0;
-   }
 
-   /* Allocate the image buffer */
-   buffer = (GLfloat *) malloc( width * height * 4 * sizeof(GLfloat));
-   if (!buffer) {
-      printf("Alloc image buffer failed!\n");
-      return 0;
-   }
-
-   /* Bind the buffer to the context and make it current */
-   if (!OSMesaMakeCurrent( ctx, buffer, GL_FLOAT, width, height )) {
-      printf("OSMesaMakeCurrent failed!\n");
-      return 0;
-   }
-
-    initialize();
-    display();
-
-    write_targa(argv[4], buffer, width, height);
-    free(buffer);
-    OSMesaDestroyContext(ctx);
+    glfwTerminate();
     return 0;
 }

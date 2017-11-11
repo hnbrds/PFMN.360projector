@@ -6,17 +6,21 @@ find_package(OpenCV REQUIRED)
 if(APPLE)
 	# sudo port install glfw freeglut
 	include_directories("/usr/local/include")
-  #set(OpenCV_LIBS opencv_core opencv_imgproc opencv_calib3d opencv_video opencv_features2d opencv_ml opencv_highgui opencv_objdetect opencv_contrib opencv_legacy opencv_gpu)
+	# include_directories("/opt/local/include")
+	set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/Modules/")
+	find_package(OSMesa REQUIRED)
+	include_directories(${OSMESA_INCLUDE_DIR})
+	set(OSMesaLIBS ${OSMesaLIBS} ${OSMESA_LIBRARY})
 endif()
 if(UNIX)
     set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -D_DEBUG -Wall")
     set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -D_DEBUG -Wall")
     include_directories(${OpenCV_INCLUDE_DIRS})
 
-    set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/Modules/")
-    find_package(OSMesa REQUIRED)
-    include_directories(${OSMESA_INCLUDE_DIR})
-    set(OSMesaLIBS ${OSMesaLIBS} ${OSMESA_LIBRARY})
+	set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/Modules/")
+	find_package(OSMesa REQUIRED)
+	include_directories(${OSMESA_INCLUDE_DIR})
+	set(OSMesaLIBS ${OSMesaLIBS} ${OSMESA_LIBRARY})
 else()
   include_directories("${OgreFltk_SOURCE_DIR}/glfw-3.1.2/include")
 endif()
@@ -52,7 +56,8 @@ if(UNIX)
 			#/usr/local/lib/libglut.dylib
 			/System/Library/Frameworks/GLUT.framework
 			/usr/local/lib/libfreeimage.dylib
-            "${OpenCV_LIBS}"
+		"${OpenCV_LIBS}"
+		"${OSMESA_LIBRARY}"
       )
     else()
     target_link_libraries(OgreFltk
@@ -69,6 +74,6 @@ target_link_libraries(OgreFltk
 	GLu32.lib
 	"${OgreFltk_SOURCE_DIR}/glfw-3.1.2/lib-msvc110/GLFW.lib"
 	"${OpenCV_LIBS}"
-    #"${OSMesaLIBS}"
+	"${OSMesaLIBS}"
 	)
 endif()

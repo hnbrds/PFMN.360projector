@@ -1,47 +1,24 @@
-/*********************************************************************************
- * Spherical Player for equirectangular video
- * GLFW_VERSION_MAJOR == 3
- **********************************************************************************/
-
-typedef unsigned char BYTE;
-typedef wchar_t WCHAR;
-
 #include <iostream>
 #include <string>
 #include <fstream>
 #include <stdlib.h>
-#include <math.h>
 
-#ifdef __APPLE__
+#include <GL/osmesa.h>
 #include <OpenGL/gl.h>
 #include <OpenGL/glu.h>
-#elif __LINUX
-#include <GL/gl.h>
-#include <GL/glu.h>
-#endif
-#include <GL/gl.h>
-#include <GL/glu.h>
-#include <GL/osmesa.h>
-#include <GLFW/glfw3.h>
 
 #include <assert.h>
 
+//#include "cv/VideoFrame.h"
+#include <opencv2/core.hpp>
+#include <opencv2/imgproc.hpp>
+#include <opencv2/opencv.hpp>
+
 #include "math/matrix4.h"
 #include "math/vector3.h"
-#include "cv/VideoFrame.h"
-#include "ZoomInterpolation/BMPLoader.h"
 
 #ifndef M_PI
 #define M_PI 3.1415926535897932384626433832795
-#endif
-
-#define SAVE_TARGA
-
-#if GLFW_VERSION_MAJOR==3
-GLFWwindow* g_window = NULL;
-#endif
-#ifndef GLFW_FALSE
-#define GLFW_FALSE 0
 #endif
 
 #define XAXIS vector3(1,0,0)
@@ -51,9 +28,7 @@ GLFWwindow* g_window = NULL;
 using namespace std;
 using namespace cv;
 
-string video_dir;
-Player* player;
-
+string image_dir;
 
 // Eye
 /*
@@ -107,8 +82,8 @@ VERTICES VERTEX[vertexCount];
 int width, height;
 static int isDrag = 0;
 
-// Screen pixels
-unsigned char* pixels;
+// OpenCV image
+Mat cap;
 
 /*********************************************************************************
  * OpenCV Mat to OpenGL texture
@@ -135,7 +110,6 @@ GLuint MatToTexture(Mat _image)
 
     return textureID;
 }
-
 
 /*********************************************************************************
  * Draw x, y, z axis of current frame on screen.
@@ -179,8 +153,8 @@ void drawSphere(double R, GLuint texture)
         glVertex3f (VERTEX[i].X, VERTEX[i].Y, VERTEX[i].Z);
     }
     glEnd();
-
 }
+
 
 void createSphere(double R, double H, double K, double Z)
 {
@@ -202,7 +176,6 @@ void createSphere(double R, double H, double K, double Z)
             VERTEX[n].U = (i) / 360;
             // Then start working with the next vertex
             n++;
-
 
             // Then we do the same calculations as before, only adding the space variable
             // to the j values.
@@ -234,17 +207,16 @@ void createSphere(double R, double H, double K, double Z)
     }
 }
 
-
 /*********************************************************************************
  * Call this part whenever display events are needed.
  * Display events are called in case of re-rendering by OS. ex) screen movement, screen maximization, etc.
  **********************************************************************************/
 void display()
 {
-    Mat frame = player-> getNextFrame();
+    //Mat frame = player-> getNextFrame();
 
     // Call OpenCV to get next frame
-    sphereText = MatToTexture(frame);
+    sphereText = MatToTexture(cap);
     //imshow("Sample Video", frame);
 
     // call display() for every frame of the video
@@ -260,24 +232,8 @@ void display()
     glBindTexture(GL_TEXTURE_2D, sphereText);
 
     drawSphere(8, sphereText);
-
-    glReadPixels(0, 0, width, height, GL_RGB, GL_UNSIGNED_BYTE, pixels);
-    /*bitmap_image image(width, height);
-    image_drawer draw(image);
-
-    for (unsigned int i = 0; i < image.width(); ++i)
-    {
-        for (unsigned int j = 0; j < image.height(); ++j)
-        {
-            image.set_pixel(i,j,*(++imageData),*(++imageData),*(++imageData));
-        }
-    }
-
-    image.save_image("Trangle_image.bmp");
-    */
     glFlush();
 }
-
 
 /*********************************************************************************
  * Call this part whenever size of the window is changed.
@@ -299,93 +255,6 @@ void reshape( int w, int h)
     glLoadIdentity();                       // Reset The Projection Matrix
 }
 
-
-/*********************************************************************************
- * Call this part whenever mouse button is clicked.
- **********************************************************************************/
-#if GLFW_VERSION_MAJOR==3
-void onMouseButton(GLFWwindow* window, int button, int state, int __mods)
-#else
-void onMouseButton(int button, int state)
-#endif
-{
-    const int GLFW_DOWN = 1;
-    const int GLFW_UP = 0;
-    int x, y;
-#if GLFW_VERSION_MAJOR == 3
-    double xpos, ypos;
-    glfwGetCursorPos(window, &xpos, &ypos);
-    x = xpos;
-    y = ypos;
-#else
-    glfwGetCursorPos(&x, &y);
-#endif
-    if (button == GLFW_MOUSE_BUTTON_LEFT)
-    {
-        if(state == GLFW_DOWN)
-        {
-            isDrag = 1;
-        }
-        else if (state == GLFW_UP)
-        {
-            isDrag = 0;
-        }
-    }
-}
-
-/*********************************************************************************
- * Call this part whenever user drags mouse
- * Input x, y : coordinate of mouse
- **********************************************************************************/
-#if GLFW_VERSION_MAJOR == 3
-void onMouseDrag(GLFWwindow* window, double fx, double fy)
-{
-    int x = fx;
-    int y = fy;
-#else
-void onMouseDrag( int x, int y)
-{
-#endif
-    if (isDrag)
-    {
-        printf("Mouse Dragging\n");
-    }
-}
-
-/*********************************************************************************
-* Call this part whenever user types keyboard.
-**********************************************************************************/
-#if GLFW_VERSION_MAJOR==3
-void onKeyPress(GLFWwindow *__win, int key, int __scancode, int action, int __mods)
-#else
-void onKeyPress( int key, int action)
-#endif
-{
-    if(action == GLFW_RELEASE)
-        return ;
-    if ((key == ' ') || (key == 'r'))
-    {
-        printf("Viewpoint change %d\n", eyeIndex);
-        eyeIndex = (eyeIndex + 1) % eyeCount;
-    }
-
-    else if (key == 'w'){
-
-    }
-
-    else if (key == 's'){
-
-    }
-
-    else if (key == 'a'){
-
-    }
-
-    else if (key == 'd') {
-
-    }
-
-}
 
 /*********************************************************************************
 * Load texure video from file
@@ -443,181 +312,111 @@ void initialize()
 static void
 write_targa(const char *filename, const GLfloat *buffer, int width, int height)
 {
-    FILE *f = fopen(filename, "w");
-    if(f) {
-        int i,x,y;
-        const GLfloat *ptr = buffer;
-        cout << "osdemo, writing tga file" << endl;
-        fputc (0x00, f);	/* ID Length, 0 => No ID	*/
-        fputc (0x00, f);	/* Color Map Type, 0 => No color map included	*/
-        fputc (0x02, f);	/* Image Type, 2 => Uncompressed, True-color Image */
-        fputc (0x00, f);	/* Next five bytes are about the color map entries */
-        fputc (0x00, f);	/* 2 bytes Index, 2 bytes length, 1 byte size */
-        fputc (0x00, f);
-        fputc (0x00, f);
-        fputc (0x00, f);
-        fputc (0x00, f);	/* X-origin of Image	*/
-        fputc (0x00, f);
-        fputc (0x00, f);	/* Y-origin of Image	*/
-        fputc (0x00, f);
-        fputc (width & 0xff, f);      /* Image Width	*/
-        fputc ((width>>8) & 0xff, f);
-        fputc (height & 0xff, f);     /* Image Height	*/
-        fputc ((height>>8) & 0xff, f);
-        fputc (0x18, f);		/* Pixel Depth, 0x18 => 24 Bits	*/
-        fputc (0x20, f);		/* Image Descriptor	*/
-        fclose(f);
-        f = fopen( filename, "ab" );  /* reopen in binary append mode */
-        for (y=height-1; y>=0; y--) {
-            for (x=0; x<width; x++) {
-                int r, g, b;
-                i = (y*width + x) * 4;
-                r = (int) (ptr[i+0] * 255.0);
-                g = (int) (ptr[i+1] * 255.0);
-                b = (int) (ptr[i+2] * 255.0);
-                if (r > 255) r = 255;
-                if (g > 255) g = 255;
-                if (b > 255) b = 255;
-                fputc(b, f); /* write blue */
-                fputc(g, f); /* write green */
-                fputc(r, f); /* write red */
-            }
-        }
-    }
+   FILE *f = fopen( filename, "w" );
+   if (f) {
+      int i, x, y;
+      const GLfloat *ptr = buffer;
+      printf ("osdemo, writing tga file \n");
+      fputc (0x00, f);	/* ID Length, 0 => No ID	*/
+      fputc (0x00, f);	/* Color Map Type, 0 => No color map included	*/
+      fputc (0x02, f);	/* Image Type, 2 => Uncompressed, True-color Image */
+      fputc (0x00, f);	/* Next five bytes are about the color map entries */
+      fputc (0x00, f);	/* 2 bytes Index, 2 bytes length, 1 byte size */
+      fputc (0x00, f);
+      fputc (0x00, f);
+      fputc (0x00, f);
+      fputc (0x00, f);	/* X-origin of Image	*/
+      fputc (0x00, f);
+      fputc (0x00, f);	/* Y-origin of Image	*/
+      fputc (0x00, f);
+      fputc (width & 0xff, f);      /* Image Width	*/
+      fputc ((width>>8) & 0xff, f);
+      fputc (height & 0xff, f);     /* Image Height	*/
+      fputc ((height>>8) & 0xff, f);
+      fputc (0x18, f);		/* Pixel Depth, 0x18 => 24 Bits	*/
+      fputc (0x20, f);		/* Image Descriptor	*/
+      fclose(f);
+      f = fopen( filename, "ab" );  /* reopen in binary append mode */
+      for (y=height-1; y>=0; y--) {
+         for (x=0; x<width; x++) {
+            int r, g, b;
+            i = (y*width + x) * 4;
+            r = (int) (ptr[i+0] * 255.0);
+            g = (int) (ptr[i+1] * 255.0);
+            b = (int) (ptr[i+2] * 255.0);
+            if (r > 255) r = 255;
+            if (g > 255) g = 255;
+            if (b > 255) b = 255;
+            fputc(b, f); /* write blue */
+            fputc(g, f); /* write green */
+            fputc(r, f); /* write red */
+         }
+      }
+   }
 }
 
-vector3 getDirVector(vector3){
-    return vector3(0,0,0);
+vector3 getDirVector(double lon, double lat)
+{
+    double R = 100.;
+    double x, y, z;
+    x = R * cos(lat) * cos(lon);
+    y = R * cos(lat) * sin(lon);
+    z = R * sin(lat);
+    return vector3(x, y, z);
 }
 
-vector3 getUpVector(vector3){
-    return vector3(0,0,0);
+vector3 getUpVector(vector3 dirvec)
+{
+    vector3 tmpvec, upvec;
+    tmpvec.cross(dirvec, XAXIS);
+    upvec.cross(tmpvec, dirvec);
+    return upvec;
 }
 
 int main(int argc, char* argv[])
 {
-    /*
-    glfwWindowHint(GLFW_SAMPLES, 8);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
-    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-    glfwWindowHint(GLFW_CONTEXT_CREATION_API, GLFW_OSMESA);
-    glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
-    */
-
     if(argc != 5){
-        cout << "ERROR: Number of argument, Should be 5" << endl;
-        return -1;
+        cout << "ERROR: Number of arguments should be 5" << endl;
     }
-    GLfloat * buffer;
+
+    GLfloat *buffer;
     image_dir = argv[1];
-    player = new Player(image_dir);
+    cap = imread(image_dir);
 
     width = 640;
     height = 360;
     int BPP = 32;
-    glfwInit(); // Init OpenGL
 
-    double R = 100.;
-    string lon_str, lat_str;
-    lon_str = argv[2];
-    lat_str = argv[3];
-    double lon, lat;
-    lon = (double)atof(lon_str.c_str());
-    lat = (double)atof(lat_str.c_str());
-    double dir_x, dir_y, dir_z;
-    dir_x = R * cos(lat) * cos(lon);
-    dir_y = R * cos(lat) * sin(lon);
-    dir_z = R * sin(lat);
-    vector3 dirvector = vector3(dir_x, dir_y, dir_z);
-    vector3 upvector;
-    upvector.cross(dirvector, vector3(0., 1., 0.));
-    double up_x, up_y, up_z;
-    up_x = upvector.x;
-    up_y = upvector.y;
-    up_z = upvector.z;
-    cout << "Lon, Lat : " + lon_str + " " + lat_str << endl;
-    printf("Dir vector : %f %f %f\n", dir_x, dir_y, dir_z);
-    printf("Up vector : %f %f %f\n", up_x, up_y, up_z);
-
-    //pixels = (unsigned char *)malloc((int)(3 * width * height));
-
-    // Show original image
-    // namedWindow("Sample Video", 1);
-
+   /* Create an RGBA-mode context */
 #if OSMESA_MAJOR_VERSION * 100 + OSMESA_MINOR_VERSION >= 305
-    OSMesaContext ctx = OSMesaCreateContextExt(GL_RGBA, 16, 0, 0, NULL);
+   /* specify Z, stencil, accum sizes */
+   OSMesaContext ctx = OSMesaCreateContextExt( GL_RGBA, 16, 0, 0, NULL );
 #else
-    OSMesaContext ctx = OSMesaCreateContext(GL_RGBA, NULL);
+   OSMesaContext ctx = OSMesaCreateContext( GL_RGBA, NULL );
 #endif
-    if(!ctx){
-        cout << "OSMesaCreateContext failed!" << endl;
-        return 0;
-    }
+   if (!ctx) {
+      printf("OSMesaCreateContext failed!\n");
+      return 0;
+   }
 
-    buffer = (GLfloat *)malloc(width * height * 4 * sizeof(GLfloat));
-    if(!buffer) {
-        cout << "Alloc image buffer failed!" << endl;
-        return 0;
-    }
+   /* Allocate the image buffer */
+   buffer = (GLfloat *) malloc( width * height * 4 * sizeof(GLfloat));
+   if (!buffer) {
+      printf("Alloc image buffer failed!\n");
+      return 0;
+   }
 
-    if (!OSMesaMakeCurrent(ctx, buffer, GL_FLOAT, width, height)) {
-        cout << "OSMesaMakeCurrent failed!" << endl;
-        return 0;
-    }
+   /* Bind the buffer to the context and make it current */
+   if (!OSMesaMakeCurrent( ctx, buffer, GL_FLOAT, width, height )) {
+      printf("OSMesaMakeCurrent failed!\n");
+      return 0;
+   }
+
     initialize();
     display();
 
-/*
-#if GLFW_VERSION_MAJOR==3
-    GLFWwindow* window = glfwCreateWindow(width, height, "", NULL, NULL);
-    g_window = window;
-    if(!window) {glfwTerminate(); return 1;}
-    glfwMakeContextCurrent(window);
-
-    initialize(); // Initialize sphere, eye matrices
-
-    glfwSetKeyCallback(window, onKeyPress);
-    glfwSetMouseButtonCallback(window, onMouseButton);
-    glfwSetCursorPosCallback(window, onMouseDrag);
-
-    while (!glfwWindowShouldClose(window))
-    {
-        display();
-        glfwSwapBuffers(window);
-        glfwPollEvents();
-    }
-#else
-    // Create i window (8-bit depth-buffer, no alpha and stencil buffers, windowed)
-    glfwOpenWindow(width, height, BPP/4, BPP/4, BPP/4, 1, 8, 1, GLFW_WINDOW) ;
-    glfwSetWindowTitle("360 Player");				// Make window whose name is "Simple Scene".
-    int rv,gv,bv;
-    glGetIntegerv(GL_RED_BITS,&rv);					// Get the depth of red bits from GL.
-    glGetIntegerv(GL_GREEN_BITS,&gv);				// Get the depth of green bits from GL.
-    glGetIntegerv(GL_BLUE_BITS,&bv);				// Get the depth of blue bits from GL.
-    printf( "Pixel depth = %d : %d : %d\n", rv, gv, bv );
-    initialize();									// Initialize the other thing.
-
-    glfwSetKeyCallback(onKeyPress);					// Register onKeyPress function to call that when user presses the keyboard.
-    glfwSetMouseButtonCallback(onMouseButton);		// Register onMouseButton function to call that when user moves mouse.
-    glfwSetMousePosCallback(onMouseDrag);			// Register onMouseDrag function to call that when user drags mouse.
-
-    while(glfwGetWindowParam(GLFW_OPENED) )
-    {
-        display();
-        glfwSwapBuffers();
-    }
-#endif
-*/ // Not using GLFW in server, Use OSMesa Off-screen rendering
-
-#ifdef SAVE_TARGA
     write_targa(argv[4], buffer, width, height);
-#else
-    write_ppm(argv[4], buffer, width, height);
-#endif
-
-    //glfwTerminate();
+    free(buffer);
     OSMesaDestroyContext(ctx);
     return 0;
 }

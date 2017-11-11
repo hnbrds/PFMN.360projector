@@ -286,8 +286,6 @@ void save_tga(){
     if(mkdir((player -> fileroot + "Projection").c_str(), S_IRUSR | S_IWUSR | S_IXUSR) == 0)
         cout << "Create dir : " + player -> fileroot + "Projection";
     
-    //printf("mkdir result : %d\n", result);
-    
     write_targa((player -> fileroot + "Projection/" + name).c_str(), pixels, width, height);
 }
 
@@ -295,10 +293,12 @@ void save_jpg(){
     glReadPixels(0, 0, width, height, GL_RGBA, GL_FLOAT, pixels);
     string name = player->filename + "_" + to_string((int)eyes_lon[eyeLonIndex]) + "_" + to_string((int)eyes_lat[eyeLatIndex]) + ".jpg";
     
-    cout <<"/Volumes/JYS/Projection/" + player -> fileroot << endl;
-    mkpath(("/Volumes/JYS/Projection/" + player -> fileroot).c_str(), 0755);
+    string root = "/Users/JYSung/Projection/";
     
-    player -> outputFrame(("/Volumes/JYS/Projection/" + player -> fileroot + name).c_str(), pixels, width, height);
+    cout << root + player -> fileroot << endl;
+    while(!(mkpath((root + player -> fileroot).c_str(), 0755)==0));
+    
+    player -> outputFrame((root + (player -> fileroot) + name).c_str(), pixels, width, height);
 }
 
 /*********************************************************************************

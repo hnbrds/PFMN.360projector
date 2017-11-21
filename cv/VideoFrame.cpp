@@ -25,27 +25,7 @@ bool fexists(const std::string& filename){
     std::ifstream ifile(filename.c_str());
     return (bool)ifile;
 }
-
 /*
-Player::Player(string const& _video_dir)
-{
-    video_dir = _video_dir;
-    cap = new VideoCapture(video_dir);
-    if(!cap->isOpened())
-        cout << "ERROR : not opened" << endl;
-    
-    frame_rate = cap->get(CV_CAP_PROP_FPS);
-}
-
-cv::Mat Player::getNextFrame(void)
-{
-    Mat frame;
-    *cap >> frame;
-    cur_frame++;
-    return frame;
-}
-*/
-
 Player::Player()
 {
     image_list.open(image_dir);
@@ -57,18 +37,45 @@ Player::Player()
             cap = imread(read_output);
         }
     }
+}*/
+
+Player::Player(string const& _video_dir)
+{
+    video_dir = _video_dir;
+    cap = new VideoCapture(video_dir);
+    if(!cap->isOpened())
+        cout << "ERROR : not opened" << endl;
+    
+    frame_rate = cap->get(CV_CAP_PROP_FPS);
+    *cap >> frame;
+    cur_frame = 0;
 }
 
+cv::Mat Player::getNextFrame(void)
+{
+    do {
+        *cap >> frame;
+        if(frame.empty())
+            exit(0);
+        cur_frame++;
+    } while (cur_frame % 6 != 0);
+    return frame;
+}
+
+/*
 Player::Player(string const& _image_dir)
 {
     image_dir = _image_dir;
     cap = imread(image_dir);
 }
+*/
 
 cv::Mat Player::getCurrentFrame(void)
 {
-    return cap;
+    return frame;
 }
+
+/*
 
 cv::Mat Player::getNextFrame(void)
 {
@@ -82,7 +89,7 @@ cv::Mat Player::getNextFrame(void)
         }
     }
     return cap;
-}
+}*/
 
 int Player::getFrameCount(void)
 {

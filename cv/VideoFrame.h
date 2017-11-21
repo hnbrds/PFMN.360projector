@@ -15,16 +15,16 @@
 class Player
 {
 private:
-    int cur_frame;
+    int cur_frame = 0;
     double frame_rate;
-    std::string image_dir = "./image_list.txt"; //_360airballoon.txt";
+    std::string image_dir = "./sampled_list_parade.txt";
     std::string read_output;
-    //std::string video_dir;
     std::ifstream image_list;
-    //cv::VideoCapture* cap;
-    cv::Mat cap;
+    cv::VideoCapture* cap;
+    cv::Mat frame;
 
 public:
+    std::string video_dir;
     std::string filename;
     std::string fileroot;
     void parsefile(std::string&);

@@ -32,6 +32,8 @@ typedef wchar_t WCHAR;
 #include "math/vector3.h"
 #include "cv/VideoFrame.h"
 
+#include <random>
+
 #ifndef M_PI
 #define M_PI 3.1415926535897932384626433832795
 #endif
@@ -49,37 +51,40 @@ GLFWwindow* g_window = NULL;
 #define YAXIS vector3(0,1,0)
 #define ZAXIS vector3(0,0,1)
 
+// Negative : 0 / Positive : 1
+#define PROJ_MODE 1
 
 using namespace std;
 using namespace cv;
 
+string proj_dir = "/Users/JYSung/Projection/";
 string video_dir;
 Player* player;
 
 
-// Eye
-double eyes[10][9] =
-{
-    {0,0,0,0,0,1,0,1,0},
-    {0,0,0,-1,0,0,0,1,0},
-    {0,0,0,0,0,-1,0,1,0},
-    {0,0,0,1,0,0,0,1,0},
-    {0,0,0,0,1,0,0,0,1},
-    {0,0,0,1,-1,1,0,0,1},
-    {0,0,0,1,1,-1,0,0,1},
-    {0,0,0,1,-1,-1,0,0,1},
-    {0,0,0,1,1,1,0,0,1},
-    {120,50,180,0,0,0,0,1,0}
-};
-int eyeCount = sizeof(eyes) / sizeof(eyes[0]);
 int eyeIndex;
 
+#if PROJ_MODE == 1
 double eyes_lon[9] = {0, 40, 80, 120, 160, 200, 240, 280, 320};
 double eyes_lat[9] = {-75, -55, -35, -15, 0, 15, 35, 55, 75};
 
 int eyeLonCount = sizeof(eyes_lon) / sizeof(eyes_lon[0]);
 int eyeLatCount = sizeof(eyes_lat) / sizeof(eyes_lat[0]);
+int eyeMaxCount = eyeLonCount * eyeLatCount;
 int eyeLonIndex, eyeLatIndex;
+
+#else
+random_device rd;
+mt19937 gen(rd());
+uniform_real_distribution<> theta_dist(-90, 90); // Latitude
+uniform_real_distribution<> phi_dist(-180, 180); // Longitude
+uniform_real_distribution<> var_dist(-5, 5);
+double eye_lon = phi_dist(gen);
+double eye_lat = theta_dist(gen);
+double varRandom1, varRandom2;
+int eyeMaxCount = 9;
+#endif
+
 
 // Camera vectors
 double up_x, up_y, up_z;
@@ -281,8 +286,13 @@ write_targa(const char *filename, const GLfloat *buffer, int width, int height)
 
 void save_tga(){
     glReadPixels(0, 0, width, height, GL_RGBA, GL_FLOAT, pixels);
-    string name = player->filename + "_" + to_string((int)eyes_lon[eyeLonIndex]) + "_" + to_string((int)eyes_lat[eyeLatIndex]) + ".tga";
     
+# if PROJ_MODE == 1
+    string name = player->filename + "_" + to_string((int)eyes_lon[eyeLonIndex]) + "_" + to_string((int)eyes_lat[eyeLatIndex]) + ".tga";
+# else
+    string name = player->filename + "_" + to_string(eyeIndex) + ".tga";
+# endif
+
     if(mkdir((player -> fileroot + "Projection").c_str(), S_IRUSR | S_IWUSR | S_IXUSR) == 0)
         cout << "Create dir : " + player -> fileroot + "Projection";
     
@@ -291,14 +301,25 @@ void save_tga(){
 
 void save_jpg(){
     glReadPixels(0, 0, width, height, GL_RGBA, GL_FLOAT, pixels);
+    
+    /*
+# if PROJ_MODE == 1
     string name = player->filename + "_" + to_string((int)eyes_lon[eyeLonIndex]) + "_" + to_string((int)eyes_lat[eyeLatIndex]) + ".jpg";
+# else
+    string name = player->filename + "_" + to_string(eyeIndex) + ".jpg";
+# endif
+    */
+# if PROJ_MODE == 1
+    string name = to_string(player->getFrameCount() / 6) + "_" + to_string((int)eyes_lon[eyeLonIndex]) + "_" + to_string((int)eyes_lat[eyeLatIndex]) + ".jpg";
+# else
+    string name = to_string(player->getFrameCount() / 6) + "_" + to_string(eyeIndex) + ".jpg";
+# endif
     
-    string root = "/Users/JYSung/Projection/";
+    //string root = "/Volumes/JYS/Projection/";
+    string root = proj_dir + player->video_dir;//player->filename;
+    while(!(mkpath((root).c_str(), 0755)==0));
     
-    cout << root + player -> fileroot << endl;
-    while(!(mkpath((root + player -> fileroot).c_str(), 0755)==0));
-    
-    player -> outputFrame((root + (player -> fileroot) + name).c_str(), pixels, width, height);
+    player -> outputFrame((root + "/" + name).c_str(), pixels, width, height);
 }
 
 /*********************************************************************************
@@ -360,18 +381,20 @@ void drawSphere(double R, GLuint texture)
     glRotatef (90, 1, 0, 0);
     glRotatef (90, 0, 0, 1);
     
-    //eyeLonIndex = eyeIndex / eyeLatCount;
-    //eyeLatIndex = eyeIndex % eyeLatCount;
-    
-    // Rotate by x-axis : Latitude
-    glRotatef ((int)eyes_lat[eyeLatIndex] + (float)xAxisRotDeg, -1.0, 0.0, 0.0);
-    glRotatef ((float)yAxisRotDeg, 0.0, -1.0, 0.0);
     // Rotate by z-axis : Longitude
-    glRotatef ((int)eyes_lon[eyeLonIndex] + (float)zAxisRotDeg, 0.0, 0.0, -1.0);
+    //glRotatef ((float)zAxisRotDeg, 0.0, 0.0, -1.0);
+    // Rotate by x-axis : Latitude
+    //glRotatef ((float)xAxisRotDeg, -1.0, 0.0, 0.0);
     
-    //glRotatef (30., 1.0, 0.0, 0.0);
-    //glRotatef (329., 0.0, 1.0, 0.0);
-    //glRotatef (75., 0.0, 0.0, 1.0);
+#if PROJ_MODE == 1
+    glRotatef ((int)eyes_lat[eyeLatIndex] + (float)xAxisRotDeg, -1.0, 0.0, 0.0);
+    glRotatef ((int)eyes_lon[eyeLonIndex] + (float)zAxisRotDeg, 0.0, 0.0, -1.0);
+#else
+    // Rotate random
+    glRotatef (eye_lat + varRandom2 + (float)xAxisRotDeg, -1.0, 0.0, 0.0);
+    glRotatef (eye_lon + varRandom1 + (float)zAxisRotDeg, 0.0, 0.0, -1.0);
+#endif
+    glRotatef ((float)yAxisRotDeg, 0.0, -1.0, 0.0);
     
     glBindTexture (GL_TEXTURE_2D, texture);
     glBegin (GL_TRIANGLE_STRIP);
@@ -546,17 +569,27 @@ void onMouseDrag( int x, int y)
 
 
 void nextProj(void) {
-    if(eyeIndex == eyeLonCount * eyeLatCount - 1){
+    if(eyeIndex == eyeMaxCount - 1){
         frame = player -> getNextFrame();
         eyeIndex = 0;
     }
     else
-        eyeIndex = (eyeIndex + 1) % (eyeLonCount * eyeLatCount);
+        eyeIndex = (eyeIndex + 1) % (eyeMaxCount);
     
+# if PROJ_MODE == 1
     eyeLonIndex = eyeIndex / eyeLatCount;
     eyeLatIndex = eyeIndex % eyeLatCount;
     
     printf("Lon Lat : %d %d\n", (int)eyes_lon[eyeLonIndex], (int)eyes_lat[eyeLatIndex]);
+# else
+    if(eyeIndex % 3 == 0 || eyeIndex == 0){
+        cout << "hey" << endl;
+        eye_lon = phi_dist(gen);
+        eye_lat = theta_dist(gen);
+    }
+    varRandom1 = var_dist(gen);
+    varRandom2 = var_dist(gen);
+# endif
 }
 
 /*********************************************************************************
@@ -694,15 +727,14 @@ int main(int argc, char* argv[])
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
 
-    /*if(argc != 2){
+    if(argc != 2){
         cout << "ERROR: Number of argument, Should be 2" << endl;
         return -1;
-    }*/
-    //image_dir = argv[1];
-    //player = new Player(image_dir);
+    }
+    image_dir = argv[1];
+    player = new Player(image_dir);
     
-    
-    player = new Player();
+    //player = new Player();
     
     width = 360;
     height = 200;

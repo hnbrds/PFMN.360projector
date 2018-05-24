@@ -30,7 +30,15 @@ SUBSHOTPATH = "../subshots/"
 PROJPATH = "../81patches"
 ```
 
-## How to
+## Compile projector
+When an error occurs during compiling, fixit by yourself
+
+```
+cmake .
+make
+```
+
+## How to run projector
 1. Set options
 2. run by `python run.py'
 

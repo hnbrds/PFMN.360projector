@@ -9,7 +9,8 @@
 
 ## Options
 
-1. Projection mode
+
+- Projection mode
 
 ```
 SphericalPlayer.cpp
@@ -19,7 +20,7 @@ SphericalPlayer.cpp
 // Negative projection : 0
 ```
 
-2.  Configure paths
+- Configure paths
 
 ```
 run.py

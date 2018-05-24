@@ -17,20 +17,25 @@ class Player
 private:
     int cur_frame = 0;
     double frame_rate;
-    std::string image_dir = "./sampled_list_parade.txt";
+    
     std::string read_output;
-    std::ifstream image_list;
-    cv::VideoCapture* cap;
+    // file stream for reading image_list
+    std::ifstream image_list_stream;
     cv::Mat frame;
 
 public:
-    std::string video_dir;
+    // File paths
+    std::string image_list_path;
+    // filename : (e.g. 123.jpg => 123)
     std::string filename;
-    std::string fileroot;
-    void parsefile(std::string&);
+    // subshot directory root : (e.g. ../subshot/)
+    std::string subshot_root;
+    // directory path without subshot : (e.g. wedding/v=123123/)
+    std::string mid_path;
+    // function for parsing paths
+    void parse_filepaths(std::string&);
 
-    Player();
-    Player(std::string const&);
+    Player(std::string const&, std::string const&);
     cv::Mat getCurrentFrame(void);
     cv::Mat getNextFrame(void);
     int getFrameCount(void);

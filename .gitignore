@@ -12,3 +12,7 @@ ZoomInterpolation
 wedding
 *.tga
 *.jp*g
+*out
+data
+test
+image_paths.txt

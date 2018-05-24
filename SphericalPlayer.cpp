@@ -20,8 +20,8 @@ typedef wchar_t WCHAR;
 #include <GL/gl.h>
 #include <GL/glu.h>
 #endif
-#include <GL/gl.h>
-#include <GL/glu.h>
+#include <OpenGL/gl.h>
+#include <OpenGL/glu.h>
 #include <GLFW/glfw3.h>
 
 #include <assert.h>
@@ -51,14 +51,19 @@ GLFWwindow* g_window = NULL;
 #define YAXIS vector3(0,1,0)
 #define ZAXIS vector3(0,0,1)
 
-// Negative : 0 / Positive : 1
+/**
+ Negative : 0 Random longitude, latitude
+ Positive : 1 defined longitude, latitude
+ **/
 #define PROJ_MODE 1
 
 using namespace std;
 using namespace cv;
 
-string proj_dir = "/Users/JYSung/Projection/";
-string video_dir;
+// PATHS
+string subshot_dir;
+string proj_dir;
+string image_list;
 Player* player;
 
 
@@ -124,7 +129,7 @@ int zAxisRotDeg, xAxisRotDeg, yAxisRotDeg;
 int width, height;
 static int isDrag = 0;
 
-string image_dir;
+//string image_dir;
 // Screen pixels
 Mat frame;
 GLfloat* pixels;
@@ -149,14 +154,7 @@ vector3 getDirVector(double lon, double lat)
 
 vector3 getUpVector(vector3 dirvec)
 {
-    /*
-     vector3 tmpvec, upvec;
-     tmpvec.cross(dirvec, XAXIS);
-     upvec.cross(tmpvec, dirvec);
-     return upvec;
-     */
     if(dirvec.x == 0. && dirvec.y == 0.){
-        //if(dirvec.z == 1. || dirvec.z == -1.)
         return ZAXIS;
     }
     else{
@@ -234,89 +232,15 @@ int mkpath(const char *path, mode_t mode)
 }
 
 
-
-static void
-write_targa(const char *filename, const GLfloat *buffer, int width, int height)
-{
-    FILE *f = fopen( filename, "w" );
-    if (f) {
-        int i, x, y;
-        const GLfloat *ptr = buffer;
-        fputc (0x00, f);	/* ID Length, 0 => No ID	*/
-        fputc (0x00, f);	/* Color Map Type, 0 => No color map included	*/
-        fputc (0x02, f);	/* Image Type, 2 => Uncompressed, True-color Image */
-        fputc (0x00, f);	/* Next five bytes are about the color map entries */
-        fputc (0x00, f);	/* 2 bytes Index, 2 bytes length, 1 byte size */
-        fputc (0x00, f);
-        fputc (0x00, f);
-        fputc (0x00, f);
-        fputc (0x00, f);	/* X-origin of Image	*/
-        fputc (0x00, f);
-        fputc (0x00, f);	/* Y-origin of Image	*/
-        fputc (0x00, f);
-        fputc (width & 0xff, f);      /* Image Width	*/
-        fputc ((width>>8) & 0xff, f);
-        fputc (height & 0xff, f);     /* Image Height	*/
-        fputc ((height>>8) & 0xff, f);
-        fputc (0x18, f);		/* Pixel Depth, 0x18 => 24 Bits	*/
-        fputc (0x20, f);		/* Image Descriptor	*/
-        fclose(f);
-        f = fopen( filename, "ab" );  /* reopen in binary append mode */
-        for (y=height-1; y>=0; y--) {
-            for (x=0; x<width; x++) {
-                int r, g, b;
-                i = (y * width + x) * 4;
-                r = (int) (ptr[i+0] * 255.0);
-                g = (int) (ptr[i+1] * 255.0);
-                b = (int) (ptr[i+2] * 255.0);
-                //printf("R G B : %d %d %d\n", r, g, b);
-                if (r > 255) r = 255;
-                if (g > 255) g = 255;
-                if (b > 255) b = 255;
-                fputc(b, f); /* write blue */
-                fputc(g, f); /* write green */
-                fputc(r, f); /* write red */
-            }
-        }
-        fclose(f);
-    }
-    glFlush();
-}
-
-
-void save_tga(){
-    glReadPixels(0, 0, width, height, GL_RGBA, GL_FLOAT, pixels);
-    
-# if PROJ_MODE == 1
-    string name = player->filename + "_" + to_string((int)eyes_lon[eyeLonIndex]) + "_" + to_string((int)eyes_lat[eyeLatIndex]) + ".tga";
-# else
-    string name = player->filename + "_" + to_string(eyeIndex) + ".tga";
-# endif
-
-    if(mkdir((player -> fileroot + "Projection").c_str(), S_IRUSR | S_IWUSR | S_IXUSR) == 0)
-        cout << "Create dir : " + player -> fileroot + "Projection";
-    
-    write_targa((player -> fileroot + "Projection/" + name).c_str(), pixels, width, height);
-}
-
 void save_jpg(){
     glReadPixels(0, 0, width, height, GL_RGBA, GL_FLOAT, pixels);
     
-    /*
 # if PROJ_MODE == 1
     string name = player->filename + "_" + to_string((int)eyes_lon[eyeLonIndex]) + "_" + to_string((int)eyes_lat[eyeLatIndex]) + ".jpg";
 # else
     string name = player->filename + "_" + to_string(eyeIndex) + ".jpg";
 # endif
-    */
-# if PROJ_MODE == 1
-    string name = to_string(player->getFrameCount() / 6) + "_" + to_string((int)eyes_lon[eyeLonIndex]) + "_" + to_string((int)eyes_lat[eyeLatIndex]) + ".jpg";
-# else
-    string name = to_string(player->getFrameCount() / 6) + "_" + to_string(eyeIndex) + ".jpg";
-# endif
-    
-    //string root = "/Volumes/JYS/Projection/";
-    string root = proj_dir + player->video_dir;//player->filename;
+    string root = proj_dir + "/" + player->mid_path;
     while(!(mkpath((root).c_str(), 0755)==0));
     
     player -> outputFrame((root + "/" + name).c_str(), pixels, width, height);
@@ -615,9 +539,6 @@ void onKeyPress( int key, int action)
         nextProj();
         glFlush();
     }
-    else if (key == GLFW_KEY_S) {
-        save_tga();
-    }
     else if (key == GLFW_KEY_RIGHT) {
         zAxisRotDeg = (zAxisRotDeg + 1) % 360;
         printf("Rotation degree X, Y, Z : %d %d %d\n", xAxisRotDeg, yAxisRotDeg, zAxisRotDeg);
@@ -727,14 +648,15 @@ int main(int argc, char* argv[])
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
 
-    if(argc != 2){
-        cout << "ERROR: Number of argument, Should be 2" << endl;
+    if(argc != 4){
+        cout << "ERROR: Number of argument, Should be 4" << endl;
         return -1;
     }
-    image_dir = argv[1];
-    player = new Player(image_dir);
     
-    //player = new Player();
+    image_list = argv[1];
+    subshot_dir = argv[2];
+    proj_dir = argv[3];
+    player = new Player(image_list, subshot_dir);
     
     width = 360;
     height = 200;
